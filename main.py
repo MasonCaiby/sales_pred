@@ -35,21 +35,29 @@ class TestData(object):
         self.test = pd.read_csv(test_file)
         self.TrainData = train_data
 
-    def make_test_key(self):
-        self.test["key"] = self.test.Store.map(str) + '_' + self.test.Dept.map(str) + '_' + self.test.Date.map(str)
+    def make_test(self):
+        self.test.Date = pd.to_datetime(self.test.Date)
+        self.test["week"] = self.test.Date.dt.week
+        self.test.Date = self.test["Date"].dt.date
+
+        self.test["Weekly_Sales"] = 0
+        self.test["Id"] = self.test.Store.map(str) + '_' + self.test.Dept.map(str) + '_' + self.test.Date.map(str)
 
     def add_means(self):
         self.test = predict_from_means(self.TrainData.means, self.test)
 
     def make_submission_file(self, columns):
         self.test["Weekly_Sales"] = self.test[columns].mean(axis=1)
-        self.test[["key", 'Weekly_Sales']].to_csv("submission.csv")
+        self.test["Weekly_Sales"].fillna(200, inplace=True)
+        self.test[["Id", 'Weekly_Sales']].to_csv("submission.csv", index=False)
 
 
 if __name__ == "__main__":
     training = TrainData("train.csv", "features.csv", "stores.csv")
+    training.concat_clean_dfs()
+    training.make_training_dfs()
     test = TestData("test.csv", training)
-    test.make_test_key()
+    test.make_test()
     test.add_means()
     test.make_submission_file(["Weekly_Sales_means"])
 
